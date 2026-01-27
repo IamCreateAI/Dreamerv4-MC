@@ -8,7 +8,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-brightgreen)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.4%2B-orange)](https://pytorch.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.8%2B-orange)](https://pytorch.org/)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model%20Zoo-yellow)](https://huggingface.co/)
 
 [**📖 Introduction**](#-introduction) | [**🏰 Model Zoo**](#-model-zoo) | [**🛠️ Installation**](#-installation) | [**💻 Quick Start**](#-quick-start)
@@ -20,8 +20,8 @@
 ## 📖 Introduction
 
 This repository contains the **Inference Code** for the Minecraft Autoregressive World Model.
-
-Our model utilizes a **MAE (Masked Autoencoder)** for efficient video compression and a **DiT (Diffusion Transformer)** architecture to autoregressively predict future game frames based on history and action inputs in the latent space. This codebase is streamlined for **deployment and generation**, supporting long-context reasoning and real-time interaction.
+This project serves as an **open-source reproduction of the [DreamerV4](https://danijar.com/project/dreamerv4/) architecture**, tailored specifically for high-fidelity simulation in the Minecraft environment. Our model utilizes a **MAE (Masked Autoencoder)** for efficient video compression and a **DiT (Diffusion Transformer)** architecture to autoregressively predict future game frames based on history and action inputs in the latent space.
+ This codebase is streamlined for **deployment and generation**, supporting long-context inference and real-time interaction.
 
 ### Key Features
 * **Inference Only**: Lightweight codebase focused on generation, stripped of complex training logic.
