@@ -31,7 +31,7 @@ class ServerConfig:
     # 优先读取环境变量，如果没有则使用默认路径
     dynamic_model_path: str = os.getenv("DYNAMIC_PATH", "")
     tokenizer_path: str = os.getenv("TOKENIZER_PATH", "")
-    record_video_output_path: str = os.getenv("RECORD_VIDEO_OUTPUT_PATH", "./recorded_videos")
+    record_video_output_path: str = os.getenv("RECORD_VIDEO_OUTPUT_PATH", "")
     
     device: str = "cuda"
     dtype: torch.dtype = torch.bfloat16
@@ -179,9 +179,7 @@ class InferenceEngine:
 
     # ... [保留 reset_kv_cache 和 render 代码不变] ...
     def reset_kv_cache(self):
-        if self.model:
-            with self.lock:
-                self.model.clean_kvcache()
+        self.model.clean_kvcache()
 
     def render(self, state: InputState, dx: float, dy: float) -> bytes:
         if not self.model: return b''
@@ -344,6 +342,9 @@ if __name__ == "__main__":
         config.dynamic_model_path = args.dynamic_path
     if args.tokenizer_path:
         config.tokenizer_path = args.tokenizer_path
+        
+    if args.record_video_output_path:
+        config.record_video_output_path = args.record_video_output_path
         
     print(f"Starting server on {args.host}:{args.port}")
     

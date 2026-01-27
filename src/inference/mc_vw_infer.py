@@ -199,11 +199,15 @@ class MCWorldModelInfer:
         
         if self.enable_record_video:
             self.enable_record_video = False
+            print("Stopped recording and saved video.")
             video_tensor = torch.stack(self.cached_video, dim=0)
-            save_video_tensor(video_tensor, f"{self.record_video_output_path}/{self.current_chunk_idx}.mp4", fps=20)
+            try:
+                save_video_tensor(video_tensor, f"{self.record_video_output_path}/{self.current_chunk_idx}.mp4", fps=20)
+            except Exception as e:
+                print(f"{self.record_video_output_path}/{self.current_chunk_idx}.mp4")
+                print(f"Error saving video: {e}")
             self.current_chunk_idx += 1
             self.cached_video = []
-            print("Stopped recording and saved video.")
         else:
             self.enable_record_video = True
             self.cached_video = []

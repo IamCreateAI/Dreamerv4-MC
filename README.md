@@ -36,7 +36,7 @@ Please download the pre-trained weights and place them in the `checkpoints/` dir
 
 | Model Name | Params | VRAM Req | Description |
 | :--- | :---: | :---: | :--- |
-| **MAE-Tokenizer** | 800M | >4GB | Handles video encoding and decoding. |
+| **MAE-Tokenizer** | 430M | >2GB | Handles video encoding and decoding. |
 | **Dynamic Model** | 1.7B | 9GB | Generates the next frame based on history and action. |
 
 > 🔗 **Download**: [HuggingFace Collection](https://huggingface.co/your-username/minecraft-world-model)
@@ -47,7 +47,7 @@ We recommend using Python 3.10+ and CUDA 12.1+.
 
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/IamCreateAI/Dreamerv4-MC.git](https://github.com/IamCreateAI/Dreamerv4-MC.git)
+git clone https://github.com/IamCreateAI/Dreamerv4-MC.git
 cd Dreamerv4-MC
 
 # 2. Create a virtual environment
@@ -59,8 +59,9 @@ pip install torch torchvision --index-url [https://download.pytorch.org/whl/cu12
 
 # 4. Install dependencies
 pip install -r requirements.txt
+pip install -e .
 ```
-## 💻 Usage
+## 💻 Quick-Start
 ```bash
 python ui/inference_ui.py --dynamic_path=/path/to/dynamic_model \
  --tokenizer_path=/path/to/tokenizer/ \
