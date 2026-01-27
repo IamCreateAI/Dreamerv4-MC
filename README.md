@@ -79,6 +79,7 @@ python ui/inference_ui.py --dynamic_path=/path/to/dynamic_model \
 | **E** | Open/Close Inventory (Simulation) |
 | **1 - 9** | Select Hotbar Slot |
 | **R** | start/stop record the video|
+| **V** | refresh into new scene |
 | **left Shift** |Sneak|
 | **left ctrl** |Sprint|
 
