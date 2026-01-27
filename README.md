@@ -1,5 +1,5 @@
-# VisionaryWorld
-autoregressive model for world model research, including training, inference and distributed system
+# Dreamer-MC
+inference code
 
 
 # install
