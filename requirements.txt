@@ -17,3 +17,4 @@ scipy
 uvicorn[standard]==0.30.6
 pillow==10.4.0
 fastapi==0.115.0
+diffusers
