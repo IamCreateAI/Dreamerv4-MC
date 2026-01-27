@@ -59,6 +59,7 @@ pip install torch torchvision --index-url [https://download.pytorch.org/whl/cu12
 
 # 4. Install dependencies
 pip install -r requirements.txt
+MAX_JOBS=4 pip install flash-attn --no-build-isolation
 pip install -e .
 ```
 ## 💻 Quick-Start
