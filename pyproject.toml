@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dreamer4-mc"
+version = "2.1.0"
+description = ""
+authors = [
+    {name = 'Ming Gao', email='dujinshidai30@gmail.com'}
+]
+license = { file = "LICENSE.txt" }
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "torchvision>=0.19.0",
+    "opencv-python-headless>=4.9.0.80",
+    "diffusers>=0.31.0",
+    "tqdm",
+    "imageio",
+    "easydict",
+    "ftfy",
+    "dashscope",
+    "imageio-ffmpeg",
+    "numpy>=1.23.5",
+    'scipy',
+    'numba',
+    'uvicorn[standard]==0.30.6',
+    'pillow==10.4.0',
+    'fastapi==0.115.0'
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+    "isort",
+    "mypy",
+    "huggingface-hub[cli]"
+]
+
+[project.urls]
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.setuptools.package-data]
+"src" = ["**/*.py"]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+strict = true
+
+
