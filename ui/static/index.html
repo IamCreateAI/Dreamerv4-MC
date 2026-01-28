@@ -3,19 +3,133 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>inference engine</title>
+  <title>Visionary World Engine</title>
   <style>
-    html, body { margin:0; height:100%; background:#0b0b0f; overflow:hidden; }
-    #wrap { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-    canvas { background:#111; border:1px solid #333; max-width:98vw; max-height:98vh; }
-    #hud { position:absolute; left:12px; bottom:12px; color:#ddd; font:12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    /* === 全局与布局 === */
+    html, body { margin:0; height:100%; background:#0b0b0f; overflow:hidden; color:#ddd; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    
+    #app-container { display: flex; width: 100%; height: 100%; }
+
+    /* === 左侧边栏 === */
+    #sidebar {
+      width: 140px;
+      background: #16161a;
+      border-right: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto; /* 核心属性：允许垂直滚动 */
+      padding: 10px;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 10;
+      
+      /* Firefox 滚动条兼容 */
+      scrollbar-width: thin;
+      scrollbar-color: #333 #16161a;
+    }
+
+    /* === Webkit 滚动条自定义 (Chrome/Edge/Safari) === */
+    #sidebar::-webkit-scrollbar { width: 6px; }
+    #sidebar::-webkit-scrollbar-track { background: #16161a; }
+    #sidebar::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    #sidebar::-webkit-scrollbar-thumb:hover { background: #666; }
+
+    .thumb {
+      width: 100%; height: 80px; flex-shrink: 0; /* 防止图片被压缩 */
+      background-color: #222; background-size: cover; background-position: center;
+      border: 2px solid transparent; border-radius: 4px;
+      cursor: pointer; opacity: 0.7; transition: 0.2s;
+    }
+    .thumb:hover { opacity: 1; border-color: #555; }
+    .thumb.active { border-color: #00ff88; opacity: 1; box-shadow: 0 0 8px rgba(0,255,136,0.2); }
+
+    /* === 右侧主区域 === */
+    #right-column {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+      position: relative;
+    }
+
+    /* === 顶部说明栏 === */
+    #header-bar {
+      background: #111;
+      border-bottom: 1px solid #333;
+      padding: 8px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #888;
+      flex-shrink: 0;
+    }
+
+    .control-group { display: flex; align-items: center; gap: 4px; }
+    
+    kbd {
+      background: #222; border: 1px solid #444; border-bottom: 2px solid #444;
+      border-radius: 3px; padding: 2px 6px; color: #eee;
+      font-family: inherit; font-weight: bold; min-width: 14px; text-align: center;
+      display: inline-block;
+    }
+    
+    .mouse-icon {
+      border: 1px solid #444; border-radius: 10px; width: 12px; height: 18px; position: relative; display: inline-block; margin: 0 2px;
+    }
+    .mouse-icon.left::after { content:''; position:absolute; top:2px; left:2px; width:3px; height:6px; background:#0f8; }
+    .mouse-icon.right::after { content:''; position:absolute; top:2px; right:2px; width:3px; height:6px; background:#0f8; }
+
+    /* === 画布容器 === */
+    #canvas-wrap {
+      flex-grow: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #050505;
+      overflow: hidden;
+    }
+
+    canvas { background:#111; border:1px solid #333; max-width:98%; max-height:98%; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    
+    #hud { 
+      position:absolute; left:12px; bottom:12px; 
+      pointer-events: none; text-shadow: 1px 1px 2px #000; z-index: 5;
+    }
   </style>
 </head>
 <body>
-  <div id="wrap">
-    <canvas id="cv" width="640" height="360"></canvas>
-    <div id="hud">connecting...</div>
+  
+  <div id="app-container">
+    <div id="sidebar">
+      <div style="text-align:center; color:#666; font-size:12px; padding-bottom:5px;">Start Frames</div>
+    </div>
+
+    <div id="right-column">
+      <div id="header-bar">
+        <div class="control-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span>Move</span></div>
+        <div class="control-group"><kbd>Space</kbd> <span>Jump</span></div>
+        <div class="control-group"><span class="mouse-icon left"></span> <span>Attack</span></div>
+        <div class="control-group"><span class="mouse-icon right"></span> <span>Place</span></div>
+        <div class="control-group"><kbd>E</kbd> <span>Inventory</span></div>
+        <div class="control-group"><kbd>1</kbd>-<kbd>9</kbd> <span>Hotbar</span></div>
+        <div class="control-group"><kbd>Shift</kbd> <span>Sneak</span></div>
+        <div class="control-group"><kbd>Ctrl</kbd> <span>Sprint</span></div>
+        <div style="width:1px; height:16px; background:#333; margin:0 5px;"></div>
+        <div class="control-group" style="color:#00ff88;"><kbd style="border-color:#008844;">R</kbd> <span>Record</span></div>
+        <div class="control-group" style="color:#ffcc00;"><kbd style="border-color:#aa8800;">V</kbd> <span>Refresh Scene</span></div>
+      </div>
+
+      <div id="canvas-wrap">
+        <canvas id="cv" width="640" height="360"></canvas>
+        <div id="hud">connecting...</div>
+      </div>
+    </div>
   </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

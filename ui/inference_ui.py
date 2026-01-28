@@ -8,27 +8,23 @@ import argparse
 import sys
 from dataclasses import dataclass, field
 from contextlib import asynccontextmanager
-from typing import Dict, Set, Optional, Tuple, Callable, Any
+from typing import Dict, Set, Optional, Tuple, Callable, Any, Union
 
 import torch
 import numpy as np
 import av
 from PIL import Image
-from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
-# 引入你的项目依赖
+from torch.nn import functional as F
+import torchvision.transforms as T
 from src.inference.mc_vw_infer import MCWorldModelInfer
 from src.modules.actokenizer import MineCraftActionTokenizer
 
-# ==========================================
-# 1. 配置 (支持 环境变量 和 命令行参数)
-# ==========================================
+
 @dataclass
 class ServerConfig:
-    # 优先读取环境变量，如果没有则使用默认路径
     dynamic_model_path: str = os.getenv("DYNAMIC_PATH", "")
     tokenizer_path: str = os.getenv("TOKENIZER_PATH", "")
     record_video_output_path: str = os.getenv("RECORD_VIDEO_OUTPUT_PATH", "")
@@ -179,7 +175,9 @@ class InferenceEngine:
 
     # ... [保留 reset_kv_cache 和 render 代码不变] ...
     def reset_kv_cache(self):
-        self.model.clean_kvcache()
+        if self.model:
+            with self.lock:
+                self.model.clean_kvcache()
 
     def render(self, state: InputState, dx: float, dy: float) -> bytes:
         if not self.model: return b''
@@ -200,7 +198,8 @@ class InferenceEngine:
         action_idx_seq = self.tokenizer.get_action_index_from_actiondict(env_action, include_gui=True)
         action_tensor = torch.tensor(action_idx_seq).to(self.model.device)
 
-        frame = self.model.render_next_frame(action_id=action_tensor)
+        with self.lock:
+            frame = self.model.render_next_frame(action_id=action_tensor)
 
         img_tensor = ((frame.clamp(-1, 1) + 1) / 2 * 255).to(torch.uint8)
         img_array = img_tensor.permute(1, 2, 0).cpu().numpy()
@@ -212,11 +211,99 @@ class InferenceEngine:
         buf = io.BytesIO()
         image.save(buf, format="JPEG", quality=self.config.jpeg_quality, optimize=True)
         return buf.getvalue()
-    
+
+    def prefilling_from_image(self, image_name: str):
+        base_dir = Path(__file__).resolve().parent
+        image_path = base_dir / "static" / "start_frames" / image_name
+        print(f"[Engine] Prefilling with: {image_name}...")
+        
+        pil_image = Image.open(image_path).convert("RGB")
+        width, height = pil_image.size
+        img_tensor = self._apply_image_transform_wo_reshape(pil_image)
+        if height != 384:
+            #img_tensor = _apply_image_transform_wo_reshape(img)
+            img_tensor = self._do_symmetric_pad(
+                img_tensor, 1, 384, mode="constant", value=0
+            )
+        img_tensor = img_tensor[None, None].to(self.model.device).to(self.config.dtype)
+        
+       
+        if self.model:
+            with self.lock:
+                self.model.clean_kvcache()
+                self.model.prefilling_kvcache(init_frames=img_tensor)
+  
+        
     def record_video(self):
         if self.model:
             with self.lock:
                 self.model.record_video()
+                
+                
+    def _do_symmetric_pad(
+        self,
+        arr: torch.Tensor,
+        axis: int,
+        target_length: int,
+        mode: str = "constant",              # "constant" | "reflect" | "replicate" | "circular" | "edge"
+        value: Union[int, float] = 0,
+    ) -> torch.Tensor:
+        if target_length < 0:
+            raise ValueError("target_length must be >= 0")
+
+        ndim = arr.dim()
+        if ndim == 0:
+            raise ValueError("Scalar tensor not supported.")
+        axis = axis % ndim
+
+        cur = arr.shape[axis]
+        if target_length <= cur:
+            return arr
+
+        total = target_length - cur
+        before = total // 2
+        after  = total - before
+
+        # numpy "edge" -> torch "replicate"
+        torch_mode = "replicate" if mode == "edge" else mode
+        if torch_mode not in ("constant", "reflect", "replicate", "circular"):
+            raise ValueError(f"Unsupported mode: {mode}")
+
+        # reflect 模式的限制：pad 大小不能超过该维度 size-1
+        if torch_mode == "reflect":
+            if cur <= 1:
+                raise ValueError("Cannot reflect-pad when the dimension size <= 1.")
+            if before > cur - 1 or after > cur - 1:
+                raise ValueError(
+                    f"Reflect padding too large for dim size {cur}: before={before}, after={after} (must be <= {cur-1})."
+                )
+
+        # 将目标轴移到最后一维，便于只在最后一维 pad
+        perm = [i for i in range(ndim) if i != axis] + [axis]
+        inv_perm = [0] * ndim
+        for i, p in enumerate(perm):
+            inv_perm[p] = i
+
+        x = arr.permute(*perm)
+        # 只在最后一维 padding：(before, after)
+        pad_tuple = (before, after)
+
+        if torch_mode == "constant":
+            out = F.pad(x, pad_tuple, mode=torch_mode, value=float(value))
+        else:
+            out = F.pad(x, pad_tuple, mode=torch_mode)
+
+        return out.permute(*inv_perm)
+    
+    def _apply_image_transform_wo_reshape(
+        self,
+        img_pil: Image.Image,
+    ):
+        tfm = T.Compose([
+            T.ToTensor(),
+            T.Normalize([0.5, 0.5, 0.5],[0.5, 0.5, 0.5]),
+        ])
+        return tfm(img_pil)
 
 # ==========================================
 # 4. 初始化
@@ -238,6 +325,25 @@ static_dir_path = BASE_DIR / "static"
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=static_dir_path), name="static")
 #app.mount("static", StaticFiles(directory="static"), name="static")
+@app.get("/api/start-frames")
+def get_start_frames():
+    # 指向 static/start_frames 目录
+    target_dir = Path(f"{static_dir_path}/start_frames")
+    
+    # 如果目录不存在，返回空列表
+    if not target_dir.exists():
+        print(f"Warning: Directory not found: {target_dir}")
+        return []
+    
+    # 扫描 png, jpg, jpeg
+    files = []
+    for ext in ["*.png", "*.jpg", "*.jpeg", "*.PNG", "*.JPG"]:
+        files.extend(target_dir.glob(ext))
+        
+    # 只取文件名，并排序
+    file_names = sorted([f.name for f in files])
+    print(f"Found frames: {file_names}") # 打印一下方便调试
+    return file_names
 
 @app.get("/")
 def index():
@@ -263,8 +369,33 @@ async def ws_endpoint(ws: WebSocket):
                     if key == "KeyV":
                         engine.reset_kv_cache()
                         state_manager.state.frame_id = 0
+                        
                     if key == "KeyR":
                         engine.record_video()
+                    
+                    event_name = data.get("event")
+                    if event_name == "set_start_frame":
+                        image_name = data.get("name")
+                        if image_name:
+                            print(f"Received prefill request: {image_name}")
+                            
+                            # 重点：这是一个耗时操作(读图+推理)，必须扔到线程池里
+                            # 否则会卡住 WebSocket 心跳导致断连
+                            await loop.run_in_executor(
+                                None, 
+                                engine.prefilling_from_image, 
+                                image_name
+                            )
+                            
+                            # 重置前端显示的帧计数
+                            state_manager.state.frame_id = 0
+                            
+                            # 可选：发送一个 meta 告诉前端重置成功
+                            await ws.send_text(json.dumps({
+                                "type": "meta", 
+                                "frame_id": 0, 
+                                "info": f"Prefilled {image_name}"
+                            }))
         except:
             stop_event.set()
 

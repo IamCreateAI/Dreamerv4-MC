@@ -273,45 +273,81 @@ class TemporalAttention(AttentionBase):
             
         
 
+        if current_frame_idx is None:
+            q = q.view(bv, f, -1, n, d)
+            k = k.view(bv, f, -1, n, d)
+            
+            q = q.view(bv, -1, n, d)
+            k = k.view(bv, -1, n, d)
+            
+            q_roped = fast_rope_apply(q, freqs)
+            k_roped = fast_rope_apply(k, freqs)
+            
+            q_roped = q_roped.view(bv, f, -1, n, d).permute(0, 2, 1, 3, 4)
+            k_roped = k_roped.view(bv, f, -1, n, d).permute(0, 2, 1, 3, 4)
+            
+            q_roped = q_roped.contiguous().view(bv * s, -1, n, d)
+            k_roped = k_roped.contiguous().view(bv * s, -1, n, d)
+            
+            v = v.view(bv, f, -1, n, d).permute(0, 2, 1, 3, 4)
+            v = v.contiguous().view(bv * s, -1, n, d)
+    
+            if self.window_size > 0:
+                x = flash_attn_func(
+                    q_roped, k_roped, v,
+                    dropout_p=0.0,
+                    causal=True,
+                    window_size=(self.window_size-1, -1)
+                )
                 
-        f_his = self.kvcache.cache_frame_max
-        self.kvcache.store_kvcache(k, v, current_frame_idx)
-        
-        freqs_his = self.kvcache.get_rope(read_rope_indices)
-        k_his, v_his = self.kvcache.get_kv()
-        
-        freqs_last = self.kvcache.get_last_rope(current_frame_idx)
-        freqs_last = freqs_last.view(-1, d // 2)
-        
-        q = q.view(bv, f, -1, n, d)
-        q = q.view(bv, -1, n, d)
-        q_roped = fast_rope_apply(q, freqs_last)
-        q_roped = q_roped.view(bv, f, -1, n, d).permute(0, 2, 1, 3, 4)
-        
-        k_his = k_his.view(bv, f_his, -1, n, d).view(bv, -1, n, d)
-        freqs_his = freqs_his.view(-1, d // 2)
-        k_his_roped = fast_rope_apply(k_his, freqs_his)
-        k_his_roped = k_his_roped.view(bv, f_his, -1, n, d).permute(0, 2, 1, 3, 4)
-        v_his = v_his.view(bv, f_his, -1, n, d).permute(0, 2, 1, 3, 4)
+            else:
+                x = flash_attn_func(
+                    q_roped, k_roped, v,
+                    dropout_p=0.0,
+                    causal=True,
+                    window_size=(-1, -1)
+                )
+            x = x.view(bv, s, -1, n, d).permute(0, 2, 1, 3, 4)
+            x = x.contiguous().view(bv * f, -1, n, d)
+        else:
+            f_his = self.kvcache.cache_frame_max
+            self.kvcache.store_kvcache(k, v, current_frame_idx)
+            
+            freqs_his = self.kvcache.get_rope(read_rope_indices)
+            k_his, v_his = self.kvcache.get_kv()
+            
+            freqs_last = self.kvcache.get_last_rope(current_frame_idx)
+            freqs_last = freqs_last.view(-1, d // 2)
+            
+            q = q.view(bv, f, -1, n, d)
+            q = q.view(bv, -1, n, d)
+            q_roped = fast_rope_apply(q, freqs_last)
+            q_roped = q_roped.view(bv, f, -1, n, d).permute(0, 2, 1, 3, 4)
+            
+            k_his = k_his.view(bv, f_his, -1, n, d).view(bv, -1, n, d)
+            freqs_his = freqs_his.view(-1, d // 2)
+            k_his_roped = fast_rope_apply(k_his, freqs_his)
+            k_his_roped = k_his_roped.view(bv, f_his, -1, n, d).permute(0, 2, 1, 3, 4)
+            v_his = v_his.view(bv, f_his, -1, n, d).permute(0, 2, 1, 3, 4)
 
-        
-        q_roped = q_roped.contiguous().view(bv * s, -1, n, d)
-        k_his_roped = k_his_roped.contiguous().view(bv * s, -1, n, d)
-        v_his = v_his.contiguous().view(bv * s, -1, n, d)
-        
+            
+            q_roped = q_roped.contiguous().view(bv * s, -1, n, d)
+            k_his_roped = k_his_roped.contiguous().view(bv * s, -1, n, d)
+            v_his = v_his.contiguous().view(bv * s, -1, n, d)
+            
 
-        valid_len_scalar = torch.min(current_frame_idx + 1, self.kvcache.max_len)
-        total_batch_size = q_roped.shape[0]  # 即 b * l
-        cache_seqlens = valid_len_scalar.expand(total_batch_size).to(torch.int32).contiguous()
-        
-        x = flash_attn_with_kvcache(
-            q_roped, k_his_roped, v_his,
-            k=None, v=None, rotary_cos=None,rotary_sin=None,
-            cache_seqlens=cache_seqlens,
-            causal=False,
-        )
-        x = x.view(bv, s, -1, n, d).permute(0, 2, 1, 3, 4)
-        x = x.contiguous().view(bv * f, -1, n, d)
+            valid_len_scalar = torch.min(current_frame_idx + 1, self.kvcache.max_len)
+            total_batch_size = q_roped.shape[0]  # 即 b * l
+            cache_seqlens = valid_len_scalar.expand(total_batch_size).to(torch.int32).contiguous()
+            
+            x = flash_attn_with_kvcache(
+                q_roped, k_his_roped, v_his,
+                k=None, v=None, rotary_cos=None,rotary_sin=None,
+                cache_seqlens=cache_seqlens,
+                causal=False,
+            )
+            x = x.view(bv, s, -1, n, d).permute(0, 2, 1, 3, 4)
+            x = x.contiguous().view(bv * f, -1, n, d)
                 
            
         
@@ -590,12 +626,50 @@ class Encoder(nn.Module):
         for block in self.blocks:
             if isinstance(block.attn, TemporalAttention):
                 block.attn.kvcache.init_rope(freqs)
-                
+    
+    
+    def forward_training(self, x):
+        r"""
+        Args:
+            x(Tensor): Shape [B, F, 3, H, W]
+        """
+        b, f, c, h, w = x.shape
+        N = b * f
+        # patch embedding
+        x = x.view(N, c, h, w)
+        x = self.patch_embedding(x)  # [B*F, dim, H',
+        h, w = x.shape[2], x.shape[3]
+        x = x.view(N, self.dim, -1).permute(0, 2, 1)  # [B*F, L', dim]
+        L = x.shape[1]
+    
+        x = torch.cat([x, self.learnable_token.expand(N, -1, -1) + self.pos_embedding], dim=1)  # [B*F, 1+L', dim]
+        
+        freqs_patch = get_rope_patch(self.head_dim, (f, h, w), self.freqs)
+        freqs_latent = get_rope_latent(self.head_dim, (f, self.num_learnable_tokens), self.freqs)
+            
+        freqs = torch.cat([freqs_patch, freqs_latent], dim=2)
+        freqs = freqs.reshape(-1, self.head_dim // 2).to(x.device)
+        
+        kwargs = dict(
+            freqs=freqs,
+            shape=(b, f, self.num_learnable_tokens)
+        )
+        for block in self.blocks:
+            
+            x = block(x, **kwargs)
+        #x = self.model(x, **kwargs)  # [B*F, 1+L', dim]
+        x = self.post_norm(x)
+        x = self.proj(x)  # [B*F, 1+L', out_dim]
+        x = x.view(b, f, -1, self.out_dim)  # [B, F, 1+L', out_dim]
+        x = self.tanh(x)
+        return x[:, :, -self.num_learnable_tokens:]   
         
     def forward(self, x, current_frame_idx=None, 
                 read_rope_indices: Optional[torch.Tensor] = None):
-
-        return self.forward_inference_static(x, current_frame_idx, read_rope_indices)
+        if current_frame_idx is None:
+            return self.forward_training(x)
+        else:
+            return self.forward_inference_static(x, current_frame_idx, read_rope_indices)
 
 class Decoder(nn.Module):
     def __init__(self,
@@ -826,7 +900,10 @@ class CausalTokenizer(ModelMixin, ConfigMixin):
         Args:
             x(Tensor): Shape [B, F, 3, H, W]
         """
-        tokens = self.encoder(x)  # [B, F, L', out_dim]
+        try:
+            tokens = self.encoder(x)  # [B, F, L', out_dim]
+        except RuntimeError as e:
+            print("Encoder forward failed")
         L = tokens.shape[2]
         return tokens.reshape(x.shape[0], x.shape[1], L//2, -1)
     

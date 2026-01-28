@@ -2,6 +2,7 @@ import torch
 from typing import List
 from src.inference.infer import generate_one_frame, decode_one_frame
 import os, json
+from src.inference.prefill import prefilling
 from src.utils.utils import remove_unnecessary_key, CUDAGraphRunner, save_video_tensor
 from tqdm import tqdm
 
@@ -43,6 +44,7 @@ class MCWorldModelInfer:
         self.current_chunk_idx = 0
         self.refresh_kvcache = refresh_kvcache
         self.record_video_output_path = record_video_output_path
+        self.defaults_action_ids = torch.tensor([[65, 33, 55, 66,  66,  66,  66,  66, 66, 66, 66, 67]], device=device, dtype= torch.long)
     def init_tokenizer(
         self,
         tokenizer_path: str,
@@ -113,7 +115,13 @@ class MCWorldModelInfer:
         init_frames: torch.Tensor,
     ):
 
-        
+        output_video = []
+        if init_frames is not None:
+            self.prefilling_kvcache(
+                init_frames=init_frames,
+                action_ids=action_ids[:init_frames.shape[1]],
+            )
+            output_video.append(init_frames[0])
         generate_frame_num = action_ids.shape[0]
         output_video = []
         for frame_idx in tqdm(range(generate_frame_num)):
@@ -146,6 +154,27 @@ class MCWorldModelInfer:
             output_video.append(frame[0])
         output_video = torch.cat(output_video, dim=0)
         return output_video
+    
+    def prefilling_kvcache(
+        self,
+        init_frames: torch.Tensor,
+        action_ids: torch.Tensor = None,
+    ):
+        
+        if action_ids is None:
+            action_ids = self.defaults_action_ids.repeat(init_frames.shape[1], 1)
+        
+      
+        prefilling(
+            video=init_frames,
+            action_ids=action_ids,
+            tokenizer=self.tokenizer,
+            dynamic_model=self.model,
+            dynamic_runner=self.model_runner if self.use_cuda_graph else None,
+        )
+        self.frame_idx = init_frames.shape[1]
+        
+    
     
     def render_next_frame(
         self,

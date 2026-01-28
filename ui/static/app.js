@@ -297,6 +297,68 @@ window.addEventListener("wheel", (e) => {
   e.preventDefault();
 }, { passive: false });
 
+
+
+const sidebar = document.getElementById("sidebar");
+
+// 1. 获取后端提供的图片列表（我们需要在后端加一个API，见下文）
+async function loadStartFrames() {
+  try {
+    const res = await fetch("/api/start-frames");
+    const frames = await res.json();
+    
+    frames.forEach(filename => {
+      const div = document.createElement("div");
+      div.className = "thumb";
+      // 假设图片在 static/start_frames/ 目录下
+      div.style.backgroundImage = `url('/static/start_frames/${filename}')`;
+      div.title = filename;
+      
+      div.onclick = () => {
+        // UI 高亮切换
+        document.querySelectorAll(".thumb").forEach(t => t.classList.remove("active"));
+        div.classList.add("active");
+        
+        // 发送给后端
+        triggerPrefill(filename);
+      };
+      
+      sidebar.appendChild(div);
+    });
+  } catch (e) {
+    console.error("Failed to load start frames:", e);
+    const err = document.createElement("div");
+    err.textContent = "No frames found";
+    err.style.color = "#888";
+    err.style.fontSize = "12px";
+    sidebar.appendChild(err);
+  }
+}
+
+// 2. 发送预填充指令
+function triggerPrefill(filename) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  
+  // 退出锁定模式，因为用户正在点UI
+  if (captureEnabled) exitPointerLock();
+
+  // 清空本地状态，避免干扰
+  clearKeys();
+  
+  console.log("[Prefill] Requesting:", filename);
+  sendEvent({ 
+    event: "set_start_frame", 
+    name: filename 
+  });
+  
+  setHud(`Prefilling: ${filename}...`);
+}
+
+// 初始化时加载列表
+
+
+
 // start
 connect();
 setHud("UNLOCKED (Z to lock)");
+loadStartFrames();
