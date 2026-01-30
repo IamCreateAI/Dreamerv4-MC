@@ -9,6 +9,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-brightgreen)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.8%2B-orange)](https://pytorch.org/)
+[![Blog](https://img.shields.io/badge/Project-Blog-blue)](https://findlamp.github.io/dreamer-mc.github.io/)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model%20Zoo-yellow)](https://huggingface.co/)
 
 [**📖 Introduction**](#-introduction) | [**🏰 Model Zoo**](#-model-zoo) | [**🛠️ Installation**](#-installation) | [**💻 Quick Start**](#-quick-start)
@@ -87,14 +88,12 @@ python ui/inference_ui.py --dynamic_path=/path/to/dynamic_model \
 ## 📜 Citation
 If you use this codebase in your research, please consider citing us as:
 ```bash
-@misc{dreamer_mc_2026,
-    author = {Ming Gao},
-    title = {Dreamer-MC: A Real-Time Autoregressive World Model for Infinite Video Generation},
-    year = {2026},
-    publisher = {GitHub},
-    journal = {GitHub repository},
-    howpublished = {\url{[https://github.com/IamCreateAI/Dreamerv4-MC](https://github.com/IamCreateAI/Dreamerv4-MC)}}
-    }
+@article{hafner2025dreamerv4,
+    title   = {Dreamer-MC: A Real-Time Autoregressive World Model for Infinite Video Generation},
+    author  = {Ming Gao, Yan Yan, ShengQu Xi, Yu Duan, ShengQian Li, Feng Wang},
+    year    = {2026},
+    url     = {https://findlamp.github.io/dreamer-mc.github.io/}
+}
 ```
 as well as the original Dreamer 4 paper:
 ```bash

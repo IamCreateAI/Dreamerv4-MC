@@ -28,7 +28,8 @@ data/*
 video/*
 *.mp4
 *.jpg
-checkpoints/*
 *.pkl
 *.distcp
 build/*
+checkpoint/*
+*.zip
