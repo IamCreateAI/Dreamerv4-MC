@@ -69,6 +69,10 @@ python ui/inference_ui.py --dynamic_path=/path/to/dynamic_model \
  --tokenizer_path=/path/to/tokenizer/ \
  --record_video_output_path=output/
 ```
+## 🏋️ Training Code
+Coming Soon
+
+
 ## 🎮 Controls
 
 | Key | Action |
