@@ -10,7 +10,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-brightgreen)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.8%2B-orange)](https://pytorch.org/)
 [![Blog](https://img.shields.io/badge/Project-Blog-blue)](https://findlamp.github.io/dreamer-mc.github.io/)
-[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model%20Zoo-yellow)](https://huggingface.co/)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model%20Zoo-yellow)](https://huggingface.co/IamCreateAI/Dreamerv4-MC)
 
 [**📖 Introduction**](#-introduction) | [**🏰 Model Zoo**](#-model-zoo) | [**🛠️ Installation**](#-installation) | [**💻 Quick Start**](#-quick-start)
 
