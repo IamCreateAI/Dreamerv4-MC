@@ -2,8 +2,6 @@
 
 <div align="center">
 
-<img src="assets/demo_preview.gif" width="700px" alt="Minecraft World Model Generation Demo">
-
 <br>
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -40,7 +38,7 @@ Please download the pre-trained weights and place them in the `checkpoints/` dir
 | **MAE-Tokenizer** | 430M | >2GB | Handles video encoding and decoding. |
 | **Dynamic Model** | 1.7B | 9GB | Generates the next frame based on history and action. |
 
-> 🔗 **Download**: [HuggingFace Collection](https://huggingface.co/your-username/minecraft-world-model)
+> 🔗 **Download**: [HuggingFace Collection](https://huggingface.co/IamCreateAI/Dreamerv4-MC)
 
 ## 🛠️ Installation
 
